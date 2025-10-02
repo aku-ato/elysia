@@ -138,24 +138,29 @@ async def collections_list(
             ]
 
             # get processed collections
-            if await client.collections.exists("ELYSIA_METADATA__"):
+            if await client.collections.exists("ELYSIA_METADATA__") and collections:
                 metadata_collection = client.collections.get("ELYSIA_METADATA__")
-                processed_collections = await metadata_collection.query.fetch_objects(
-                    filters=Filter.any_of(
-                        [Filter.by_property("name").equal(c) for c in collections]
-                    ),
-                    limit=9999,
-                )
-                processed_collection_names = [
-                    processed_collection.properties["name"]
-                    for processed_collection in processed_collections.objects
-                ]
-                processed_collections_prompts = {
-                    processed_collection.properties[
-                        "name"
-                    ]: processed_collection.properties["prompts"]
-                    for processed_collection in processed_collections.objects
-                }
+                try:
+                    processed_collections = await metadata_collection.query.fetch_objects(
+                        filters=Filter.any_of(
+                            [Filter.by_property("name").equal(c) for c in collections]
+                        ),
+                        limit=9999,
+                    )
+                    processed_collection_names = [
+                        processed_collection.properties["name"]
+                        for processed_collection in processed_collections.objects
+                    ]
+                    processed_collections_prompts = {
+                        processed_collection.properties[
+                            "name"
+                        ]: processed_collection.properties["prompts"]
+                        for processed_collection in processed_collections.objects
+                    }
+                except Exception as e:
+                    logger.warning(f"Error fetching processed collections metadata: {e}")
+                    processed_collection_names = []
+                    processed_collections_prompts = {}
             else:
                 processed_collection_names = []
                 processed_collections_prompts = {}

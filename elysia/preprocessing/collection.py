@@ -108,7 +108,7 @@ async def _evaluate_field_statistics(
     out["mean"] = None
     out["date_range"] = None
     out["date_median"] = None
-    out["groups"] = None
+    out["groups"] = []
 
     if not out["type"].startswith("object"):
 
@@ -149,7 +149,7 @@ async def _evaluate_field_statistics(
 
         # check if groups are useful
         if len(groups) == 1 or group_coverage < 0.5:
-            out["groups"] = None
+            out["groups"] = []
         else:
             out["groups"] = groups
 
