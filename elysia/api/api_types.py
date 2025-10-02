@@ -153,3 +153,41 @@ class RemoveBranchFromTreeData(BaseModel):
 
 class AvailableModelsData(BaseModel):
     user_id: str
+
+
+# Collection Management Data Models
+class PropertyDefinition(BaseModel):
+    name: str
+    data_type: str  # "text", "int", "number", "bool", "date", "object", "text[]", etc.
+    tokenization: Optional[str] = None  # "word", "lowercase", "whitespace", "field"
+    nested_properties: Optional[List["PropertyDefinition"]] = None
+
+
+class VectorizerConfig(BaseModel):
+    type: str  # "none", "text2vec-openai", "text2vec-cohere", etc.
+    model: Optional[str] = None
+    vectorize_collection_name: Optional[bool] = False
+
+
+class NamedVectorConfig(BaseModel):
+    name: str
+    vectorizer_type: str
+    model: Optional[str] = None
+    source_properties: Optional[List[str]] = None
+
+
+class CreateCollectionData(BaseModel):
+    collection_name: str
+    properties: List[PropertyDefinition]
+    vectorizer_config: Optional[VectorizerConfig] = None
+    named_vectors: Optional[List[NamedVectorConfig]] = None
+    description: Optional[str] = None
+
+
+class InsertObjectsData(BaseModel):
+    objects: List[Dict[str, Any]]  # List of objects to insert
+
+
+class DeleteCollectionData(BaseModel):
+    collection_name: str
+    confirm: bool = False  # Safety flag to prevent accidental deletion
