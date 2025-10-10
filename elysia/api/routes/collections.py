@@ -107,12 +107,11 @@ async def collections_list(
                 - error (bool): Whether there is an error retrieving _this specific_ collection.
             - error (str): An overall error message if there is an error in the main function, otherwise an empty string.
     """
-    logger.debug(f"/collections API request received")
+    logger.info(f"/collections API request received")
 
     headers = {"Cache-Control": "no-cache"}
 
     try:
-
         user_local = await get_or_create_user(user_id, user_manager)
         client_manager: ClientManager = user_local["client_manager"]
 
@@ -837,7 +836,26 @@ async def create_collection(
                     else:
                         vectorizer_config = Configure.Vectorizer.text2vec_cohere()
                 elif vectorizer_type == "text2vec-huggingface":
-                    vectorizer_config = Configure.Vectorizer.text2vec_huggingface()
+                    # Configure Hugging Face vectorizer
+                    hf_options = {}
+
+                    # Determine model to use
+                    model_name = data.vectorizer_config.model or "intfloat/multilingual-e5-large"
+                    logger.info(f"Model name for HF vectorizer: {model_name}")
+
+                    # E5 models are single-encoder models and should use the 'model' parameter
+                    # Note: passageModel/queryModel are ONLY for DPR (Dense Passage Retrieval) dual-encoder models
+                    # See: https://docs.weaviate.io/weaviate/model-providers/huggingface/embeddings
+                    hf_options["model"] = model_name
+
+                    # Enable GPU for self-hosted transformers service
+                    # This requires TRANSFORMERS_INFERENCE_API to be set in Weaviate environment
+                    # TEMPORARILY DISABLED - testing if this causes HuggingFace download attempts
+                    # hf_options["use_gpu"] = True
+
+                    logger.info(f"Using model: {model_name} with GPU enabled")
+                    logger.info(f"Final HF vectorizer config: {hf_options}")
+                    vectorizer_config = Configure.Vectorizer.text2vec_huggingface(**hf_options)
                 else:
                     return JSONResponse(
                         content={
@@ -884,6 +902,26 @@ async def create_collection(
                             vector_config[nv.name] = Configure.NamedVectors.text2vec_cohere(
                                 name=nv.name
                             )
+                    elif vectorizer_type == "text2vec-huggingface":
+                        # Configure Hugging Face named vector
+                        nv_kwargs = {"name": nv.name}
+
+                        # Determine model to use
+                        nv_model_name = nv.model or "intfloat/multilingual-e5-large"
+
+                        # Set source properties if specified
+                        if nv.source_properties:
+                            nv_kwargs["source_properties"] = nv.source_properties
+
+                        # E5 models use single encoder with 'model' parameter
+                        # passageModel/queryModel are only for DPR dual-encoder models
+                        nv_kwargs["model"] = nv_model_name
+
+                        # Enable GPU for self-hosted transformers service
+                        nv_kwargs["use_gpu"] = True
+
+                        logger.info(f"Configuring Hugging Face named vector '{nv.name}': {nv_kwargs}")
+                        vector_config[nv.name] = Configure.NamedVectors.text2vec_huggingface(**nv_kwargs)
 
             # Create the collection
             create_kwargs = {
@@ -899,6 +937,8 @@ async def create_collection(
             if data.description:
                 create_kwargs["description"] = data.description
 
+            logger.info(f"About to create collection with kwargs: {create_kwargs}")
+            logger.info(f"Vectorizer config type: {type(vectorizer_config)}, value: {vectorizer_config}")
             collection = await client.collections.create(**create_kwargs)
 
             logger.info(f"Successfully created collection: {data.collection_name}")
