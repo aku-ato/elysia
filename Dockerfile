@@ -20,14 +20,21 @@ COPY elysia/ ./elysia/
 
 # Installa le dipendenze Python
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e .
+    pip install --no-cache-dir -e . && \
+    pip install --no-cache-dir debugpy
 
 # Scarica il modello spaCy (necessario per l'elaborazione del testo)
 RUN python -m spacy download en_core_web_sm
 
-# Esponi la porta dell'applicazione
+# Copia lo script di avvio per il debug
+COPY start_debug.sh /app/start_debug.sh
+RUN chmod +x /app/start_debug.sh
+
+# Esponi le porte dell'applicazione
 EXPOSE 8000
+# Porta per il debugger (debugpy)
+EXPOSE 5678
 
 # Comando per avviare l'applicazione
-# Usa uvicorn direttamente per maggiore controllo
-CMD ["uvicorn", "elysia.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Usa lo script di debug che supporta sia modalità normale che debug
+CMD ["/app/start_debug.sh"]

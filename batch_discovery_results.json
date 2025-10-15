@@ -1,0 +1,52 @@
+[
+  {
+    "name": "hashtag_cooccurrence",
+    "priority": "HIGH",
+    "query": "What other hashtags appear most frequently with #السلطان_هيثم_يزور_بيلاروس?",
+    "expected_tool": "CUSTOM (requires array intersection analysis)",
+    "status": "success",
+    "duration_seconds": 9.448094,
+    "response_preview": "Other hashtags most frequently paired with #السلطان_هيثم_يزور_بيلاروس are: #السلطان_هيثم_بن_طارق (134), #بيلاروس (88), #هيثم_بن_طارق (86), and #السلطان_هيثم_يزور_بيلاروسيا (50).",
+    "objects_count": 0
+  },
+  {
+    "name": "trending_hashtags",
+    "priority": "HIGH",
+    "query": "Which hashtags are trending this week compared to last week?",
+    "expected_tool": "CUSTOM (requires time comparison)",
+    "status": "success",
+    "duration_seconds": 11.251583,
+    "response_preview": "The hashtag #السلطان_هيثم_يزور_بيلاروس remains the clear leader, with #السلطان_هيثم_بن_طارق, #بيلاروس, and #هيثم_بن_طارق following closely, showing no major shift in weekly popularity.",
+    "objects_count": 0
+  },
+  {
+    "name": "author_posting_pattern",
+    "priority": "MEDIUM",
+    "query": "When does user mahas1012 typically post? Show hourly distribution.",
+    "expected_tool": "aggregate OR CUSTOM (time-based grouping)",
+    "status": "success",
+    "duration_seconds": 45.069526,
+    "response_preview": "Aggregating hourly post counts for the user from the SocialMediaPosts collection. Adding a filter for author_username “mahas1012” and grouping by timestamp, counting posts via the likes_count field. P",
+    "objects_count": 1
+  },
+  {
+    "name": "multiple_hashtags_and",
+    "priority": "LOW",
+    "query": "Find posts that contain both #السلطان_هيثم_يزور_بيلاروس AND #عمان",
+    "expected_tool": "aggregate (CONTAINS_ALL filter)",
+    "status": "success",
+    "duration_seconds": 32.112684,
+    "response_preview": "Searching SocialMediaPosts for posts that contain both #السلطان_هيثم_يزور_بيلاروس and #عمان. Querying SocialMediaPosts for posts whose hashtags list contains both #السلطان_هيثم_يزور_بيلاروس and #عمان ",
+    "objects_count": 1
+  },
+  {
+    "name": "hashtag_by_time",
+    "priority": "LOW",
+    "query": "How many posts with #السلطان_هيثم_يزور_بيلاروس were made per day?",
+    "expected_tool": "aggregate (group by date + filter)",
+    "status": "success",
+    "duration_seconds": 28.468008,
+    "response_preview": "Aggregating post counts per day for hashtag #السلطان_هيثم_يزور_بيلاروس from the SocialMediaPosts collection. Added a filter to select posts containing the hashtag and grouped results by timestamp to c",
+    "objects_count": 1
+  }
+]

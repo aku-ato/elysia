@@ -835,27 +835,16 @@ async def create_collection(
                         )
                     else:
                         vectorizer_config = Configure.Vectorizer.text2vec_cohere()
-                elif vectorizer_type == "text2vec-huggingface":
-                    # Configure Hugging Face vectorizer
-                    hf_options = {}
+                elif vectorizer_type == "text2vec-transformers":
+                    # Configure Transformers vectorizer for self-hosted offline operation
+                    transformers_options = {}
 
-                    # Determine model to use
-                    model_name = data.vectorizer_config.model or "intfloat/multilingual-e5-large"
-                    logger.info(f"Model name for HF vectorizer: {model_name}")
+                    # Inference URL pointing to our self-hosted transformers service
+                    transformers_options["inference_url"] = "http://t2v-transformers:8080"
 
-                    # E5 models are single-encoder models and should use the 'model' parameter
-                    # Note: passageModel/queryModel are ONLY for DPR (Dense Passage Retrieval) dual-encoder models
-                    # See: https://docs.weaviate.io/weaviate/model-providers/huggingface/embeddings
-                    hf_options["model"] = model_name
-
-                    # Enable GPU for self-hosted transformers service
-                    # This requires TRANSFORMERS_INFERENCE_API to be set in Weaviate environment
-                    # TEMPORARILY DISABLED - testing if this causes HuggingFace download attempts
-                    # hf_options["use_gpu"] = True
-
-                    logger.info(f"Using model: {model_name} with GPU enabled")
-                    logger.info(f"Final HF vectorizer config: {hf_options}")
-                    vectorizer_config = Configure.Vectorizer.text2vec_huggingface(**hf_options)
+                    logger.info(f"Using self-hosted transformers service at: {transformers_options['inference_url']}")
+                    logger.info(f"Final transformers vectorizer config: {transformers_options}")
+                    vectorizer_config = Configure.Vectorizer.text2vec_transformers(**transformers_options)
                 else:
                     return JSONResponse(
                         content={
@@ -902,26 +891,19 @@ async def create_collection(
                             vector_config[nv.name] = Configure.NamedVectors.text2vec_cohere(
                                 name=nv.name
                             )
-                    elif vectorizer_type == "text2vec-huggingface":
-                        # Configure Hugging Face named vector
+                    elif vectorizer_type == "text2vec-transformers":
+                        # Configure Transformers named vector for self-hosted offline operation
                         nv_kwargs = {"name": nv.name}
 
-                        # Determine model to use
-                        nv_model_name = nv.model or "intfloat/multilingual-e5-large"
+                        # Inference URL pointing to our self-hosted transformers service
+                        nv_kwargs["inference_url"] = "http://t2v-transformers:8080"
 
                         # Set source properties if specified
                         if nv.source_properties:
                             nv_kwargs["source_properties"] = nv.source_properties
 
-                        # E5 models use single encoder with 'model' parameter
-                        # passageModel/queryModel are only for DPR dual-encoder models
-                        nv_kwargs["model"] = nv_model_name
-
-                        # Enable GPU for self-hosted transformers service
-                        nv_kwargs["use_gpu"] = True
-
-                        logger.info(f"Configuring Hugging Face named vector '{nv.name}': {nv_kwargs}")
-                        vector_config[nv.name] = Configure.NamedVectors.text2vec_huggingface(**nv_kwargs)
+                        logger.info(f"Configuring Transformers named vector '{nv.name}': {nv_kwargs}")
+                        vector_config[nv.name] = Configure.NamedVectors.text2vec_transformers(**nv_kwargs)
 
             # Create the collection
             create_kwargs = {

@@ -103,9 +103,9 @@ def create_extended_social_media_collection() -> bool:
             {"name": "is_reply", "data_type": "bool"},
         ],
         "vectorizer_config": {
-            "type": "text2vec-huggingface",
-            "model": "intfloat/multilingual-e5-large"
-            # NOTE: source_properties only works with named vectors, not default vectorizer
+            "type": "text2vec-transformers"
+            # NOTE: Self-hosted transformers service for fully offline operation
+            # No model parameter needed - uses pre-configured intfloat/multilingual-e5-large
             # All properties will be vectorized by default
         }
     }
@@ -118,7 +118,7 @@ def create_extended_social_media_collection() -> bool:
         
         if response.status_code == 201:
             print_success(f"Collection 'SocialMediaPosts' created successfully")
-            print_info(f"Vectorizer: text2vec-huggingface (multilingual-e5-large)")
+            print_info(f"Vectorizer: text2vec-transformers (self-hosted multilingual-e5-large)")
             print_info(f"Total properties: {len(collection_data['properties'])}")
             return True
         elif response.status_code == 400:
@@ -186,11 +186,12 @@ def print_collection_schema():
     print("  • is_reply (boolean) - True if this post is a reply")
     
     print(f"\n{BLUE}Vectorizer:{RESET}")
-    print("  • Type: text2vec-huggingface")
+    print("  • Type: text2vec-transformers (self-hosted, fully offline)")
     print("  • Model: intfloat/multilingual-e5-large")
-    print("  • Vectorized fields: content, topic (optimized for performance)")
+    print("  • Vectorized fields: All text properties")
     print("  • Optimized for: Arabic, English, Italian, and 100+ languages")
-    print("  • GPU-accelerated via t2v-transformers service")
+    print("  • GPU-accelerated via self-hosted t2v-transformers service")
+    print("  • No external API dependencies - completely offline")
     
     print("\n" + "=" * 70 + "\n")
 

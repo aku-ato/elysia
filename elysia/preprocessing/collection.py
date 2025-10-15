@@ -11,7 +11,6 @@ from weaviate.classes.config import Configure, Property, DataType, Tokenization
 
 from elysia.config import nlp, Settings, load_base_lm, ElysiaKeyManager
 from elysia.config import settings as environment_settings
-
 from elysia.util import return_types as rt
 
 from elysia.preprocessing.prompt_templates import (

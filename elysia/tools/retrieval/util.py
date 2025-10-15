@@ -1035,7 +1035,7 @@ def _build_aggregation_args(tool_args: dict) -> dict:
     if "groupby_property" in tool_args:
         agg_args["group_by"] = GroupByAggregate(
             prop=tool_args["groupby_property"],
-            limit=200,
+            limit=10,
         )
 
     agg_args["return_metrics"] = _build_return_metrics(tool_args)

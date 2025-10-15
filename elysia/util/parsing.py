@@ -6,6 +6,7 @@ from typing import Any
 from weaviate.collections.classes.aggregate import (
     AggregateDate,
     AggregateGroupByReturn,
+    AggregateInteger,
     AggregateNumber,
     AggregateReturn,
     AggregateText,
@@ -107,8 +108,9 @@ def format_aggregation_property(prop):
             )
         return out
 
-    elif isinstance(prop, AggregateNumber):
-        out = {"type": "number", "values": []}
+    elif isinstance(prop, (AggregateNumber, AggregateInteger)):
+        # AggregateInteger and AggregateNumber have the same structure
+        out = {"type": "integer" if isinstance(prop, AggregateInteger) else "number", "values": []}
 
         if prop.count is not None:
             out["values"].append(

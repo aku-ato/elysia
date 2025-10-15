@@ -39,6 +39,7 @@ from elysia.objects import (
 )
 from elysia.tools.retrieval.aggregate import Aggregate
 from elysia.tools.retrieval.query import Query
+# from elysia.tools.retrieval.hashtag_aggregate import HashtagAggregate
 from elysia.tools.visualisation.visualise import Visualise
 from elysia.tools.postprocessing.summarise_items import SummariseItems
 from elysia.tools.text.text import (
@@ -244,6 +245,7 @@ class Tree:
         )
         self.add_tool(branch_id="search", tool=Query, summariser_in_tree=True)
         self.add_tool(branch_id="search", tool=Aggregate)
+        # self.add_tool(branch_id="search", tool=HashtagAggregate)
         self.add_tool(branch_id="base", tool=Visualise)
         self.add_tool(SummariseItems, branch_id="search", from_tool_ids=["query"])
 
@@ -261,6 +263,7 @@ class Tree:
         self.add_tool(branch_id="base", tool=CitedSummarizer)
         self.add_tool(branch_id="base", tool=FakeTextResponse)
         self.add_tool(branch_id="base", tool=Aggregate)
+        # self.add_tool(branch_id="base", tool=HashtagAggregate)
         self.add_tool(branch_id="base", tool=Query, summariser_in_tree=True)
         self.add_tool(branch_id="base", tool=Visualise)
         self.add_tool(SummariseItems, branch_id="base", from_tool_ids=["query"])

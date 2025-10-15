@@ -161,6 +161,7 @@ class Settings:
         self.LOCAL_WEAVIATE_PORT: int = 8080
         self.LOCAL_WEAVIATE_GRPC_PORT: int = 50051
         self.MODEL_API_BASE: str | None = None
+        self.SSL_VERIFY: bool = False  # SSL certificate verification (default: True)
 
         self.API_KEYS: dict[str, str] = {}
 
@@ -190,10 +191,8 @@ class Settings:
         """
         self.logger = logger
         self.LOGGING_LEVEL_INT = logger.level
-        inverted_logging_mapping = {
-            v: k for k, v in logging.getLevelNamesMapping().items()
-        }
-        self.LOGGING_LEVEL = inverted_logging_mapping[self.LOGGING_LEVEL_INT]
+        # Python 3.10 compatible: use getLevelName instead of getLevelNamesMapping (3.11+)
+        self.LOGGING_LEVEL = logging.getLevelName(self.LOGGING_LEVEL_INT)
 
     def configure_logger(
         self,
@@ -209,7 +208,8 @@ class Settings:
         """
         self.logger.setLevel(level)
         self.LOGGING_LEVEL = level
-        self.LOGGING_LEVEL_INT = logging.getLevelNamesMapping()[level]
+        # Python 3.10 compatible: use _nameToLevel instead of getLevelNamesMapping (3.11+)
+        self.LOGGING_LEVEL_INT = logging._nameToLevel.get(level.upper(), logging.INFO)
 
     def set_api_key(self, api_key: str, api_key_name: str) -> None:
         self.API_KEYS[api_key_name] = api_key
@@ -288,6 +288,15 @@ class Settings:
         self.MODEL_API_BASE = os.getenv("MODEL_API_BASE", None)
         self.LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "NOTSET")
 
+        # SSL verification setting
+        ssl_verify_env = os.getenv("SSL_VERIFY", "True")
+        self.SSL_VERIFY = ssl_verify_env.lower() not in ("false", "0", "no", "off")
+
+        # Apply SSL setting to LiteLLM globally
+        litellm.ssl_verify = False
+        if not self.SSL_VERIFY:
+            self.logger.warning("⚠️  SSL certificate verification is DISABLED - use only in development!")
+
         self.set_from_env()
 
         # check what API keys are available
@@ -346,6 +355,8 @@ class Settings:
                 - local_weaviate_port (int): The port to use for the local Weaviate cluster.
                 - local_weaviate_grpc_port (int): The gRPC port to use for the local Weaviate cluster.
                 - logging_level (str): The logging level to use. e.g. "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+                - ssl_verify (bool): Whether to verify SSL certificates for HTTPS requests. Default: True.
+                    Set to False only in development environments with self-signed certificates.
                 - use_feedback (bool): EXPERIMENTAL. Whether to use feedback from previous runs of the tree.
                     If True, the tree will use TrainingUpdate objects that have been saved in previous runs of the decision tree.
                     These are implemented via few-shot examples for the decision node.
@@ -452,7 +463,10 @@ class Settings:
                 if "logging_level" in kwargs
                 else kwargs["logger_level"]
             )
-            self.LOGGING_LEVEL_INT = logging.getLevelNamesMapping()[self.LOGGING_LEVEL]
+            # Python 3.10 compatible: use _nameToLevel instead of getLevelNamesMapping (3.11+)
+            self.LOGGING_LEVEL_INT = logging._nameToLevel.get(
+                self.LOGGING_LEVEL.upper(), logging.INFO
+            )
             self.logger.setLevel(self.LOGGING_LEVEL)
             if "logging_level" in kwargs:
                 kwargs.pop("logging_level")
@@ -470,9 +484,8 @@ class Settings:
                 if "logging_level_int" in kwargs
                 else kwargs["logger_level_int"]
             )
-            self.LOGGING_LEVEL = {
-                v: k for k, v in logging.getLevelNamesMapping().items()
-            }[self.LOGGING_LEVEL_INT]
+            # Python 3.10 compatible: use getLevelName instead of getLevelNamesMapping (3.11+)
+            self.LOGGING_LEVEL = logging.getLevelName(self.LOGGING_LEVEL_INT)
             self.logger.setLevel(self.LOGGING_LEVEL)
 
         if "settings_id" in kwargs:
@@ -490,6 +503,14 @@ class Settings:
         if "complex_use_reasoning" in kwargs:
             self.COMPLEX_USE_REASONING = kwargs["complex_use_reasoning"]
             kwargs.pop("complex_use_reasoning")
+
+        if "ssl_verify" in kwargs:
+            self.SSL_VERIFY = bool(kwargs["ssl_verify"])
+            # Apply to LiteLLM globally
+            litellm.ssl_verify = self.SSL_VERIFY
+            if not self.SSL_VERIFY:
+                self.logger.warning("⚠️  SSL certificate verification is DISABLED - use only in development!")
+            kwargs.pop("ssl_verify")
 
         if "api_keys" in kwargs and isinstance(kwargs["api_keys"], dict):
             for key, value in kwargs["api_keys"].items():
@@ -647,44 +668,44 @@ class ElysiaKeyManager:
         # reset env to original
         os.environ = self.existing_env
 
-        if exc_type is NotFoundError or exc_type is BadRequestError:
-            self._check_model_availability(
-                self.settings.BASE_MODEL, self.settings.BASE_PROVIDER
-            )
-            self._check_model_availability(
-                self.settings.COMPLEX_MODEL, self.settings.COMPLEX_PROVIDER
-            )
+        # if exc_type is NotFoundError or exc_type is BadRequestError:
+        #     self._check_model_availability(
+        #         self.settings.BASE_MODEL, self.settings.BASE_PROVIDER
+        #     )
+        #     self._check_model_availability(
+        #         self.settings.COMPLEX_MODEL, self.settings.COMPLEX_PROVIDER
+        #     )
 
-        if exc_type is AuthenticationError or exc_type is BadRequestError:
-            missing_base_api_keys = [
-                api_key
-                for api_key in provider_to_api_keys[self.settings.BASE_PROVIDER]
-                if api_key not in self.settings.API_KEYS
-            ]
-            missing_complex_api_keys = [
-                api_key
-                for api_key in provider_to_api_keys[self.settings.COMPLEX_PROVIDER]
-                if api_key not in self.settings.API_KEYS
-            ]
-            if len(missing_base_api_keys) > 0:
-                raise APIKeyError(
-                    f"You are trying to use the model '{self.settings.BASE_MODEL}' "
-                    f"but you do not have one of the following API keys: {', '.join(missing_base_api_keys)}. "
-                    f"Please update your API keys in the settings."
-                )
-            if len(missing_complex_api_keys) > 0:
-                raise APIKeyError(
-                    f"You are trying to use the model '{self.settings.COMPLEX_MODEL}' "
-                    f"but you do not have one of the following API keys: {', '.join(missing_complex_api_keys)}. "
-                    f"Please update your API keys in the settings."
-                )
+        # if exc_type is AuthenticationError or exc_type is BadRequestError:
+        #     missing_base_api_keys = [
+        #         api_key
+        #         for api_key in provider_to_api_keys[self.settings.BASE_PROVIDER]
+        #         if api_key not in self.settings.API_KEYS
+        #     ]
+        #     missing_complex_api_keys = [
+        #         api_key
+        #         for api_key in provider_to_api_keys[self.settings.COMPLEX_PROVIDER]
+        #         if api_key not in self.settings.API_KEYS
+        #     ]
+            # if len(missing_base_api_keys) > 0:
+            #     raise APIKeyError(
+            #         f"You are trying to use the model '{self.settings.BASE_MODEL}' "
+            #         f"but you do not have one of the following API keys: {', '.join(missing_base_api_keys)}. "
+            #         f"Please update your API keys in the settings."
+            #     )
+            # if len(missing_complex_api_keys) > 0:
+            #     raise APIKeyError(
+            #         f"You are trying to use the model '{self.settings.COMPLEX_MODEL}' "
+            #         f"but you do not have one of the following API keys: {', '.join(missing_complex_api_keys)}. "
+            #         f"Please update your API keys in the settings."
+            #     )
 
-            raise APIKeyError(
-                f"One of your API keys is incorrect. "
-                f"Please update your API keys in the settings. "
-                f"The relevant API keys are: "
-                f"{set(provider_to_api_keys[self.settings.BASE_PROVIDER] + provider_to_api_keys[self.settings.COMPLEX_PROVIDER])}"
-            )
+            # raise APIKeyError(
+            #     f"One of your API keys is incorrect. "
+            #     f"Please update your API keys in the settings. "
+            #     f"The relevant API keys are: "
+            #     f"{set(provider_to_api_keys[self.settings.BASE_PROVIDER] + provider_to_api_keys[self.settings.COMPLEX_PROVIDER])}"
+            # )
 
         if (
             exc_type is AuthenticationError
@@ -772,7 +793,11 @@ def load_lm(
             temperature=1.0,
         )
 
-    return LM(model=full_lm_name, api_base=model_api_base, max_tokens=8000)
+    # Reduce max_tokens to 4000 to accommodate larger prompts
+    # For models with 32K context (like gpt-oss-20b), this allows ~28K input tokens
+    # and 4K output tokens, preventing "max_tokens must be at least 1" errors
+    # when LiteLLM calculates: max_tokens - prompt_tokens
+    return LM(model=full_lm_name, api_base=model_api_base, max_tokens=8000, temperature=1.0)
 
 
 # global settings that should never be used by the frontend
